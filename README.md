@@ -25,9 +25,7 @@ An implementation of a WebSocket client for ESP32 using PlatformIO that enables 
 - [Usage](#usage)
 - [Project Structure](#project-structure)
 - [API Reference](#api-reference)
-- [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
-- [License](#license)
 
 ## Requirements
 
@@ -400,17 +398,9 @@ For better performance:
 - Optimize message frequency
 - Use binary messages for large data
 
-### Getting Help
-
-If issues persist:
-- Check [PlatformIO documentation](https://docs.platformio.org/)
-- Search [ESP32 forums](https://esp32.com/)
-- Ask on [Stack Overflow](https://stackoverflow.com/questions/tagged/esp32)
-- Create an issue in this repository
-
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+We welcome contributions!
 
 ### Development Setup
 1. Fork the repository
