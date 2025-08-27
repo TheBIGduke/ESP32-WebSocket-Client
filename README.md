@@ -4,16 +4,15 @@
 [![ESP32](https://img.shields.io/badge/ESP32-Compatible-blue.svg)](https://www.espressif.com/en/products/socs/esp32)
 [![Python](https://img.shields.io/badge/Python-3.7%2B-green.svg)](https://www.python.org/)
 
-An implementation of a WebSocket client for ESP32 using PlatformIO that enables real-time bidirectional communication between your ESP32 device and a computer-based WebSocket server.
+A simple WebSocket client implementation for ESP32 using PlatformIO that enables real-time bidirectional communication between your ESP32 device and a Python WebSocket server.
 
 ## Features
 
-- Real-time WebSocket communication between ESP32 and computer
+- Real-time WebSocket communication between ESP32 and Python server
 - PlatformIO project structure
-- Automatic reconnection with exponential backoff
 - Event-driven callbacks for connection status monitoring
-- Optimized for minimal memory footprint
-- Comprehensive documentation and examples
+- Simple message sending and receiving
+- JSON-based server responses
 - Easy configuration and deployment
 
 ## Table of Contents
@@ -59,7 +58,7 @@ An implementation of a WebSocket client for ESP32 using PlatformIO that enables 
 
 5. **Run the server**
    ```bash
-   python server/websocket_server.py
+   python server/server.py
    ```
 
 ## Installation
@@ -94,7 +93,7 @@ pio --version
 python --version
 
 # Install WebSocket server dependencies
-pip install websockets asyncio
+pip install websockets
 ```
 
 ### Step 3: Setup the Project
@@ -123,8 +122,8 @@ Edit `src/main.cpp` and update your network credentials:
 
 ```cpp
 // WiFi Configuration
-const char* ssid = "YOUR_WIFI_NAME";
-const char* password = "YOUR_WIFI_PASSWORD";
+const char* ssid = "ESP32";
+const char* password = "12345678";
 ```
 
 ### WebSocket Server Configuration
@@ -145,22 +144,22 @@ const char* password = "YOUR_WIFI_PASSWORD";
 
 2. **Update the server address in `src/main.cpp`:**
    ```cpp
-   const char* websockets_server = "ws://192.168.1.100:8765";
+   const char* websockets_server = "ws://192.168.0.102:8765";
    ```
-   Replace `192.168.1.100` with your computer's IP address.
+   Replace `192.168.0.102` with your computer's IP address.
 
 ### Advanced Configuration
 
 You can modify these settings in `src/main.cpp`:
 
 ```cpp
-// WebSocket Configuration
-#define WEBSOCKET_PORT 8765
-#define RECONNECT_INTERVAL 5000  // milliseconds
-#define HEARTBEAT_INTERVAL 30000 // milliseconds
+// Serial Configuration (currently set to 9600)
+Serial.begin(9600);
 
-// Serial Configuration
-#define SERIAL_BAUD 115200
+// Message sending interval (currently 5 seconds)
+if (millis() - lastMsg > 5000) {
+  // Send message logic
+}
 ```
 
 ## Usage
@@ -182,7 +181,7 @@ pio run
 pio run -t upload
 
 # Monitor serial output
-pio device monitor -b 115200
+pio device monitor -b 9600
 ```
 
 ### 2. Start the WebSocket Server
@@ -192,7 +191,7 @@ pio device monitor -b 115200
 cd server
 
 # Run the server
-python websocket_server.py
+python server.py
 ```
 
 Expected output:
@@ -205,47 +204,41 @@ Waiting for connections...
 
 #### Serial Monitor (ESP32):
 ```bash
-pio device monitor -b 115200
+pio device monitor -b 9600
 ```
 
 Expected ESP32 output:
 ```
-Connecting to WiFi: YOUR_WIFI_NAME
-WiFi connected! IP: 192.168.1.101
-Connecting to WebSocket server...
-WebSocket Connected!
-Sending: Hello from ESP32 - 1
-Received: Echo: Hello from ESP32 - 1
+Connecting to WiFi...
+Connected to WiFi
+IP address: 192.168.0.101
+Connected to WebSocket server!
+Connection Opened
+Received: {"type":"status","message":"Connected to server"}
+Sent: ESP32 time: 5000
+Received: {"type":"echo","received":"ESP32 time: 5000","status":"OK"}
 ```
 
 #### Server Console:
 ```
-Client connected: 192.168.1.101:54321
-Received from client: Hello from ESP32 - 1
-Sent to client: Echo: Hello from ESP32 - 1
+WebSocket server started on ws://0.0.0.0:8765
+Client connected
+Received: ESP32 time: 5000
 ```
 
 ## Project Structure
 
 ```
-esp32-websocket-client/
+ESP32-WebSocket-Client/
 ├── src/
 │   └── main.cpp                 # ESP32 WebSocket client code
 ├── server/
-│   ├── websocket_server.py      # Python WebSocket server
-│   └── advanced_server.py       # Server with additional features
-├── include/
-│   └── config.h                 # Configuration headers
-├── lib/
-│   └── WebSocketClient/         # Custom WebSocket library
-├── test/
-│   └── test_websocket.cpp       # Unit tests
-├── docs/
-│   ├── API.md                   # API documentation
-│   └── EXAMPLES.md              # Usage examples
+│   └── server.py                # Python WebSocket server
+├── include/                     # (empty directory)
+├── lib/                         # (empty directory)
+├── test/                        # (empty directory)
 ├── platformio.ini               # PlatformIO configuration
 ├── .gitignore                   # Git ignore file
-├── LICENSE                      # License file
 └── README.md                    # This file
 ```
 
@@ -253,29 +246,40 @@ esp32-websocket-client/
 
 ### ESP32 Client Functions
 
+The main code uses the ArduinoWebsockets library with these key components:
+
 ```cpp
-// Core WebSocket functions
-void initWebSocket();                    // Initialize WebSocket connection
-void sendMessage(const String& message); // Send message to server
-void onWebSocketEvent(WStype_t type, uint8_t* payload, size_t length);
+// WebSocket client instance
+WebsocketsClient client;
 
-// WiFi functions
-void connectToWiFi();                    // Connect to WiFi network
-bool isWiFiConnected();                  // Check WiFi connection status
+// Connection
+bool connected = client.connect(websockets_server);
 
-// Utility functions
-void reconnectWebSocket();               // Manually trigger reconnection
-String getDeviceInfo();                  // Get ESP32 device information
+// Send message
+client.send(message);
+
+// Message callback
+client.onMessage([&](WebsocketsMessage message) {
+    // Handle received message
+});
+
+// Event callback
+client.onEvent([&](WebsocketsEvent event, String data) {
+    // Handle connection events
+});
+
+// Poll for messages
+client.poll();
 ```
 
 ### WebSocket Events
 
 | Event | Description |
 |-------|-------------|
-| `WStype_CONNECTED` | Successfully connected to server |
-| `WStype_DISCONNECTED` | Disconnected from server |
-| `WStype_TEXT` | Text message received |
-| `WStype_ERROR` | Connection error occurred |
+| `WebsocketsEvent::ConnectionOpened` | Successfully connected to server |
+| `WebsocketsEvent::ConnectionClosed` | Disconnected from server |
+| `WebsocketsEvent::GotPing` | Ping received from server |
+| `WebsocketsEvent::GotPong` | Pong received from server |
 
 ### Server API
 
@@ -360,7 +364,7 @@ pio device list
 
 #### Serial Monitor Shows Nothing
 **Symptoms:** No output in serial monitor
-- Verify baud rate (115200)
+- Verify baud rate (9600 - as set in the code)
 - Check USB cable and connection
 - Try different USB port
 - Press ESP32 reset button
@@ -378,25 +382,16 @@ pip show websockets
 # Test port availability
 netstat -an | grep 8765
 
-# Run with verbose logging
-python websocket_server.py --verbose
-```
-
-### Debug Mode
-
-Enable debug output in `src/main.cpp`:
-```cpp
-#define DEBUG_WEBSOCKET 1
-#define WEBSOCKETS_NETWORK_TYPE NETWORK_ESP32_ETH
+# Run the server
+python server.py
 ```
 
 ### Performance Optimization
 
 For better performance:
 - Increase WiFi TX power: `WiFi.setTxPower(WIFI_POWER_19_5dBm)`
-- Adjust WebSocket ping interval
-- Optimize message frequency
-- Use binary messages for large data
+- Adjust message sending frequency (currently 5 seconds)
+- Optimize message content size
 
 ## Contributing
 
